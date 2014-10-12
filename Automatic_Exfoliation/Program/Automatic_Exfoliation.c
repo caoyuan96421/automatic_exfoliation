@@ -8,6 +8,7 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <avr/eeprom.h>
+#include <avr/wdt.h>
 
 /*Constants*/
 #define BAUD_RATE	9600L
@@ -16,7 +17,6 @@
 #define LED_BLINK	300 /*ms*/
 #define SPEED_UPDATE_INTERVAL	50 /*ms*/
 #define SPEED_EPS	10	/*Update speed only if input is differed by larger than this value*/
-#define EEPROM_POS_ADDR	0x00	/*Position for saving system position even after system shutdown*/
 #define FAST_STEP	128
 #define SLOW_STEP	1
 #define FORWARD_STEP	-1
@@ -25,7 +25,7 @@
 #define CRITICAL_POS	6300000L
 #define SPEED_MIN_FAST		400
 #define SPEED_MAX_FAST		3500
-#define SPEED_MIN_SLOW		4
+#define SPEED_MIN_SLOW		8
 #define SPEED_MAX_SLOW		1000
 
 /*Pinout definitions*/
@@ -204,7 +204,7 @@ ISR(USART_UDRE_vect,ISR_BLOCK){ // ISR for USART, send next char
 
 ISR(ADC_vect,ISR_BLOCK){// ISR for ADC event
 	if(milliseconds - speed_update_timer > SPEED_UPDATE_INTERVAL){
-		speed = ADCL | ((unsigned int)ADCH << 8);
+		speed = 1023 - (ADCL | ((unsigned int)ADCH << 8));
 		speed_update_timer = milliseconds;
 	}
 }
@@ -296,6 +296,10 @@ void init(){
 	
 	self_check = 1;	// ensure that button is not reactive when self-checking
 	sei();
+	
+	_delay_ms(1000);
+	uprintf("\r\n\r\nSystem started at %d\r\n",milliseconds);
+
 }
 
 void panic(){
@@ -313,28 +317,29 @@ void calibrate(){
 	if(READ(LIMIT) == 0){// already at limit at startup
 		uprintf("LIMIT triggered at start up.\r\n");
 		system_state = MANUAL_BACKWARD;
-		uprintf("Going back...");
+		uprintf("Moving back...");
 		while(READ(LIMIT)==0){
 			_delay_ms(100);
 		}
-		_delay_ms(100);
+		_delay_ms(500);
 		uprintf("Done.\r\n");
 		system_state = IDLE;
 	}
-	_delay_ms(100);
+	_delay_ms(1000);
 	uprintf("Moving forward to calibrate...\r\n");
 	unsigned long long timestarted = milliseconds;
 	system_state = MANUAL_FORWARD;
-	while((milliseconds - timestarted < 60000L) && READ(LIMIT) == 1);	// wait until LIMIT is triggered
-	if(milliseconds - timestarted >= 60000L){			// something goes wrong
+	while((milliseconds - timestarted < 60000L) && system_state != IDLE);	// wait until LIMIT triggered
+	if(milliseconds - timestarted >= 20000L){			// something goes wrong
 		TCCR1B &= 0xF8;				// Force stop output
 		uprintf("Error when calibrating.\r\nPlease restart system.\r\n");
+		uprintf("Error state: %d\n", (int)system_state);
 		_delay_ms(100);
 		panic();
 	}
 	clear_position = 1;
-	system_state = IDLE;
 	TCNT0 = 0;		// clear timer counter for steps
+	_delay_ms(5);
 	uprintf("Calibration finished. Position = %ld\r\n",position);
 	self_check = 0;
 }
@@ -461,8 +466,9 @@ void timer2CallBack(){
 				position += (long)TCNT0 * step;	// sum up remaining steps
 				TCNT0 = 0;
 				if(clear_position){
-					position = 0;
 					clear_position = 0;
+					position = 0;
+					uprintf("Position zeroed\r\n");
 				}
 				if(ISDEBUG){
 					uprintf("Speed at %d\r\n",speed);
@@ -556,7 +562,7 @@ void buttonReleasedCallBack(){
 /*Called when LIMIT is triggered. NOTE: THIS IS IN AN INTERRUPT ENVIRONMENT. ALL TIMING AND DELAYS WILL *NOT* WORK. */
 void limitTriggeredCallBack(){
 	if(ISDEBUG)
-		uprintf("Limit triggered\r\n");
+		uprintf("Limit triggered at %d\r\n", milliseconds);
 	switch(system_state){
 		case AUTO_FORWARD:
 		case MANUAL_FORWARD:
@@ -574,8 +580,11 @@ int main()
 	init();
 	calibrate();
 	ADCSRA |= _BV(ADSC); // start first sampling
+	wdt_enable(WDTO_250MS);	// Enable watch dog timer
 	while (1){
-		// do nothing, just wait for interrupts
+		wdt_reset();	// feed the hungry dog
+		_delay_ms(5);
+		// do nothing, just wait for interrupts. Everything else is dealt in ISRs
 	}
 	return 0;
 }
