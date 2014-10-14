@@ -13,19 +13,19 @@ Idx Name          Size      VMA       LMA       File off  Algn
                   CONTENTS, READONLY
   4 .debug_aranges 00000098  00000000  00000000  00001a7c  2**0
                   CONTENTS, READONLY, DEBUGGING
-  5 .debug_info   000008d3  00000000  00000000  00001b14  2**0
+  5 .debug_info   000008bc  00000000  00000000  00001b14  2**0
                   CONTENTS, READONLY, DEBUGGING
-  6 .debug_abbrev 000002e1  00000000  00000000  000023e7  2**0
+  6 .debug_abbrev 000002b8  00000000  00000000  000023d0  2**0
                   CONTENTS, READONLY, DEBUGGING
-  7 .debug_line   0000045f  00000000  00000000  000026c8  2**0
+  7 .debug_line   00000451  00000000  00000000  00002688  2**0
                   CONTENTS, READONLY, DEBUGGING
-  8 .debug_frame  00000484  00000000  00000000  00002b28  2**2
+  8 .debug_frame  00000484  00000000  00000000  00002adc  2**2
                   CONTENTS, READONLY, DEBUGGING
-  9 .debug_str    0000040f  00000000  00000000  00002fac  2**0
+  9 .debug_str    0000040f  00000000  00000000  00002f60  2**0
                   CONTENTS, READONLY, DEBUGGING
- 10 .debug_loc    00000ec5  00000000  00000000  000033bb  2**0
+ 10 .debug_loc    00000ec5  00000000  00000000  0000336f  2**0
                   CONTENTS, READONLY, DEBUGGING
- 11 .debug_ranges 00000088  00000000  00000000  00004280  2**0
+ 11 .debug_ranges 00000088  00000000  00000000  00004234  2**0
                   CONTENTS, READONLY, DEBUGGING
 
 Disassembly of section .text:
@@ -173,7 +173,7 @@ void uprintf(char *s, ...){
       f6:	71 91       	ld	r23, Z+
 	va_list args;
 	va_start(args,s);
-	vsprintf(buffer2,s,args);
+	vsprintf((char*)buffer2,s,args);
       f8:	af 01       	movw	r20, r30
       fa:	81 e1       	ldi	r24, 0x11	; 17
       fc:	93 e0       	ldi	r25, 0x03	; 3
@@ -189,12 +189,12 @@ void uprintf(char *s, ...){
      10e:	08 95       	ret
 
 00000110 <__vector_16>:
-ISR(TIMER2_COMPA_vect, ISR_BLOCK){	// ISR for Timer 2 tick. Global 1ms timing
-	milliseconds ++;
-	timer2CallBack();
 }
-
-ISR(TIMER0_OVF_vect,ISR_BLOCK){ // ISR for Timer 0 overflow event.
+/* ISR for Timer 0 overflow event. */
+/* Some explanations: Timer 0 is hard wired to the output of Timer 1 (see schematic), in order to count how many pulses have been sent out by the controller to the motor. */
+/* Timer 0 is a 8-bit timer/counter and increases on each pulse from Timer 1, therefore it overflows when the counter reaches 256 and calls this ISR.*/
+/* Whenever this ISR is called, we know that the controller has sent out another 256 pulses, and therefore we know how many steps the motor has moved.*/
+ISR(TIMER0_OVF_vect,ISR_BLOCK){ 
      110:	1f 92       	push	r1
      112:	0f 92       	push	r0
      114:	0f b6       	in	r0, 0x3f	; 63
@@ -236,7 +236,7 @@ ISR(TIMER0_OVF_vect,ISR_BLOCK){ // ISR for Timer 0 overflow event.
      166:	90 93 0d 03 	sts	0x030D, r25
      16a:	a0 93 0e 03 	sts	0x030E, r26
      16e:	b0 93 0f 03 	sts	0x030F, r27
-	if(position < 0 && system_state == AUTO_FORWARD || position > CRITICAL_POS && system_state == AUTO_BACKWARD){
+	if((position < 0 && system_state == AUTO_FORWARD) || (position > CRITICAL_POS && system_state == AUTO_BACKWARD)){
      172:	80 91 0c 03 	lds	r24, 0x030C
      176:	90 91 0d 03 	lds	r25, 0x030D
      17a:	a0 91 0e 03 	lds	r26, 0x030E
@@ -258,7 +258,8 @@ ISR(TIMER0_OVF_vect,ISR_BLOCK){ // ISR for Timer 0 overflow event.
      1a8:	80 91 fd 02 	lds	r24, 0x02FD
      1ac:	82 30       	cpi	r24, 0x02	; 2
      1ae:	61 f4       	brne	.+24     	; 0x1c8 <__vector_16+0xb8>
-		// For safety, exit AUTOMATIC modes immediately
+		/* If position<0 or position>CRITICAL_POS, it means we should have reached the limit*/
+		/* For safety, exit AUTO modes immediately */
 		system_state = IDLE;
      1b0:	10 92 fd 02 	sts	0x02FD, r1
 		if(ISDEBUG)
@@ -294,7 +295,8 @@ ISR(TIMER0_OVF_vect,ISR_BLOCK){ // ISR for Timer 0 overflow event.
 
 000001ea <__vector_19>:
 
-ISR(USART_UDRE_vect,ISR_BLOCK){ // ISR for USART, send next char
+/* ISR for USART (serial port debugging), send next char */
+ISR(USART_UDRE_vect,ISR_BLOCK){ 
      1ea:	1f 92       	push	r1
      1ec:	0f 92       	push	r0
      1ee:	0f b6       	in	r0, 0x3f	; 63
@@ -346,7 +348,9 @@ ISR(USART_UDRE_vect,ISR_BLOCK){ // ISR for USART, send next char
 
 00000244 <__vector_21>:
 
-ISR(ADC_vect,ISR_BLOCK){// ISR for ADC event
+/* ISR for ADC finished event */
+/* The ADC starts next sampling immediately after it finishes the last one*/
+ISR(ADC_vect,ISR_BLOCK){
      244:	1f 92       	push	r1
      246:	0f 92       	push	r0
      248:	0f b6       	in	r0, 0x3f	; 63
@@ -391,6 +395,9 @@ ISR(ADC_vect,ISR_BLOCK){// ISR for ADC event
      2b6:	0e 94 f4 08 	call	0x11e8	; 0x11e8 <__cmpdi2_s8>
      2ba:	79 f1       	breq	.+94     	; 0x31a <__vector_21+0xd6>
      2bc:	70 f1       	brcs	.+92     	; 0x31a <__vector_21+0xd6>
+		/*We update the speed every SPEED_UPDATE_INTERVAL*/
+		
+		/*If the relationship of the position on the potentiometer and the speed is opposite to what you expect, use the other line in the following two lines*/
 		speed = 1023 - (ADCL | ((unsigned int)ADCH << 8));
      2be:	20 91 78 00 	lds	r18, 0x0078
      2c2:	80 91 79 00 	lds	r24, 0x0079
@@ -402,6 +409,8 @@ ISR(ADC_vect,ISR_BLOCK){// ISR for ADC event
      2d0:	93 0b       	sbc	r25, r19
      2d2:	90 93 01 03 	sts	0x0301, r25
      2d6:	80 93 00 03 	sts	0x0300, r24
+		//speed = (ADCL | ((unsigned int)ADCH << 8));
+		
 		speed_update_timer = milliseconds;
      2da:	70 91 04 03 	lds	r23, 0x0304
      2de:	60 91 05 03 	lds	r22, 0x0305
@@ -445,12 +454,12 @@ ISR(ADC_vect,ISR_BLOCK){// ISR for ADC event
      344:	18 95       	reti
 
 00000346 <__vector_2>:
-
-ISR(INT0_vect,ISR_BLOCK){// ISR for LIMIT switch
-	limitTriggeredCallBack();
+	limitTriggeredCallBack();	/*Go to the callback for details*/
 }
 
-ISR(INT1_vect,ISR_BLOCK){// ISR for BUTTON event
+/* ISR for BUTTON event */
+/* Note: this ISR is called on both pressing and releasing the button */
+ISR(INT1_vect,ISR_BLOCK){
      346:	1f 92       	push	r1
      348:	0f 92       	push	r0
      34a:	0f b6       	in	r0, 0x3f	; 63
@@ -501,6 +510,7 @@ ISR(INT1_vect,ISR_BLOCK){// ISR for BUTTON event
      3b2:	9e bf       	out	0x3e, r25	; 62
      3b4:	0f be       	out	0x3f, r0	; 63
      3b6:	8d bf       	out	0x3d, r24	; 61
+	/*Update the state machine*/
 	switch(button_state){
      3b8:	80 91 ff 02 	lds	r24, 0x02FF
      3bc:	88 23       	and	r24, r24
@@ -559,11 +569,11 @@ ISR(INT1_vect,ISR_BLOCK){// ISR for BUTTON event
 				button_state = RISE_DETECTED;
      456:	82 e0       	ldi	r24, 0x02	; 2
      458:	80 93 ff 02 	sts	0x02FF, r24
-			}
 			break;
 		default:
 			break;
 	}
+	/*After ANTIJITTER milliseconds, the state machine will be updated in timer2CallBack()*/
 }
      45c:	ff 91       	pop	r31
      45e:	ef 91       	pop	r30
@@ -620,15 +630,16 @@ void init(){
 	LED_OFF;
      498:	41 98       	cbi	0x08, 1	; 8
      49a:	42 98       	cbi	0x08, 2	; 8
+	
 	// Timer 0 init
-	TCCR0A |= 0;			// Mode: Normal
+	TCCR0A |= 0;						// Mode: Normal (overflows at 256)
      49c:	84 b5       	in	r24, 0x24	; 36
      49e:	84 bd       	out	0x24, r24	; 36
 	TCCR0B |= _BV(CS02) | _BV(CS01);	// Clock source: External T0 pin (hard wired to output of T1 (PULSE), so this timer is synchronized with PULSE output).
      4a0:	85 b5       	in	r24, 0x25	; 37
      4a2:	86 60       	ori	r24, 0x06	; 6
      4a4:	85 bd       	out	0x25, r24	; 37
-	TIMSK0 |= _BV(TOIE0);	// Generate interrupt when full
+	TIMSK0 |= _BV(TOIE0);				// Generate interrupt when overflows
      4a6:	ee e6       	ldi	r30, 0x6E	; 110
      4a8:	f0 e0       	ldi	r31, 0x00	; 0
      4aa:	80 81       	ld	r24, Z
@@ -639,7 +650,7 @@ void init(){
 	
 	// Timer 1 init
 	// This timer is used for generating PWM signal for driving stepper motor driver, ST-M5045
-	TCCR1A |= _BV(COM1A0);	// Mode: CTC.  TOP: OCR1A. Toggle when match.
+	TCCR1A |= _BV(COM1A0);	// Mode: CTC.  TOP: OCR1A. Toggle PULSE output when counter value and the value in OCR1A matches.
      4b2:	e0 e8       	ldi	r30, 0x80	; 128
      4b4:	f0 e0       	ldi	r31, 0x00	; 0
      4b6:	80 81       	ld	r24, Z
@@ -651,19 +662,19 @@ void init(){
      4c0:	80 81       	ld	r24, Z
      4c2:	88 60       	ori	r24, 0x08	; 8
      4c4:	80 83       	st	Z, r24
-	TCNT1 = 0;								// Reset timer counter
+	TCNT1 = 0;				// Reset timer counter
      4c6:	10 92 85 00 	sts	0x0085, r1
      4ca:	10 92 84 00 	sts	0x0084, r1
 	
 	// Timer 2 init
-	// This timer is used for global timing (1ms resolution), also drives the main loop
-	TCCR2A |= _BV(WGM21);					// Mode: CTC
+	// This timer is used for global timing (1ms resolution)
+	TCCR2A |= _BV(WGM21);					// Mode: CTC (automatically clears when counter reaches OCR2A)
      4ce:	e0 eb       	ldi	r30, 0xB0	; 176
      4d0:	f0 e0       	ldi	r31, 0x00	; 0
      4d2:	80 81       	ld	r24, Z
      4d4:	82 60       	ori	r24, 0x02	; 2
      4d6:	80 83       	st	Z, r24
-	TCCR2B |= _BV(CS22);		// Prescaler: by 64
+	TCCR2B |= _BV(CS22);					// Prescaler: by 64
      4d8:	e1 eb       	ldi	r30, 0xB1	; 177
      4da:	f0 e0       	ldi	r31, 0x00	; 0
      4dc:	80 81       	ld	r24, Z
@@ -675,14 +686,14 @@ void init(){
      4e6:	80 81       	ld	r24, Z
      4e8:	82 60       	ori	r24, 0x02	; 2
      4ea:	80 83       	st	Z, r24
-	OCR2A = 249;							// Frequency = F_CPU / Prescale / (OCR2A + 1) = 1kHz, start now
+	OCR2A = 249;							// Frequency = F_CPU / Prescale / (OCR2A + 1) = 1kHz
      4ec:	89 ef       	ldi	r24, 0xF9	; 249
      4ee:	80 93 b3 00 	sts	0x00B3, r24
 	TCNT2 = 0;								// Reset timer counter
      4f2:	10 92 b2 00 	sts	0x00B2, r1
 	
 	// External Interrupt (LIMIT and BUTTON) setup
-	EICRA |= _BV(ISC10) | _BV(ISC01);	// LIMIT only interrupt on FALLING edge, BUTTON triggers on BOTH edges
+	EICRA |= _BV(ISC10) | _BV(ISC01);	// LIMIT only triggers on FALLING edge, BUTTON triggers on BOTH edges
      4f6:	e9 e6       	ldi	r30, 0x69	; 105
      4f8:	f0 e0       	ldi	r31, 0x00	; 0
      4fa:	80 81       	ld	r24, Z
@@ -701,14 +712,14 @@ void init(){
 	UBRR0H = div >> 8;
      50c:	10 92 c5 00 	sts	0x00C5, r1
 	
-	// Setup the Analog-Digital Conversion unit
-	ADMUX |= _BV(REFS0);	// AVCC as reference
+	// Setup the Analog-Digital Conversion (ADC) 
+	ADMUX |= _BV(REFS0);	// AVCC as reference, that is Vcc (5V power supply)
      510:	ec e7       	ldi	r30, 0x7C	; 124
      512:	f0 e0       	ldi	r31, 0x00	; 0
      514:	80 81       	ld	r24, Z
      516:	80 64       	ori	r24, 0x40	; 64
      518:	80 83       	st	Z, r24
-	ADCSRA |= _BV(ADEN) | _BV(ADATE) | _BV(ADIE) | _BV(ADPS2) | _BV(ADPS1) | _BV(ADPS0);	// Enable ADC, Enable Interrupt and autotrigger. Clock divided by 128 = 125kHz
+	ADCSRA |= _BV(ADEN) | _BV(ADATE) | _BV(ADIE) | _BV(ADPS2) | _BV(ADPS1) | _BV(ADPS0);	// Enable ADC, Enable Interrupt and autotrigger. Clock is F_CPU divided by 128 = 125kHz
      51a:	ea e7       	ldi	r30, 0x7A	; 122
      51c:	f0 e0       	ldi	r31, 0x00	; 0
      51e:	80 81       	ld	r24, Z
@@ -786,10 +797,11 @@ void init(){
 
 }
 
+/*Panic state. Wait for Watch dog to recover*/
 void panic(){
 	cli();
      5a8:	f8 94       	cli
-	while(1){
+	while(1){	/*Loop forever*/
 		LED_ON(RED);
      5aa:	41 98       	cbi	0x08, 1	; 8
      5ac:	42 9a       	sbi	0x08, 2	; 8
@@ -841,7 +853,7 @@ void calibrate(){
      5f4:	9f 93       	push	r25
      5f6:	8f 93       	push	r24
      5f8:	0e 94 74 00 	call	0xe8	; 0xe8 <uprintf>
-	if(READ(LIMIT) == 0){// already at limit at startup
+	if(READ(LIMIT) == 0){// If the LIMIT is already triggered at startup
      5fc:	0f 90       	pop	r0
      5fe:	0f 90       	pop	r0
      600:	4a 99       	sbic	0x09, 2	; 9
@@ -852,7 +864,7 @@ void calibrate(){
      608:	9f 93       	push	r25
      60a:	8f 93       	push	r24
      60c:	0e 94 74 00 	call	0xe8	; 0xe8 <uprintf>
-		system_state = MANUAL_BACKWARD;
+		system_state = MANUAL_BACKWARD; // We move backward to make some space until LIMIT is released
      610:	84 e0       	ldi	r24, 0x04	; 4
      612:	80 93 fd 02 	sts	0x02FD, r24
 		uprintf("Moving back...");
@@ -930,7 +942,7 @@ void calibrate(){
 	system_state = MANUAL_FORWARD;
      6a8:	83 e0       	ldi	r24, 0x03	; 3
      6aa:	80 93 fd 02 	sts	0x02FD, r24
-	while((milliseconds - timestarted < 60000L) && system_state != IDLE);	// wait until LIMIT triggered
+	while((milliseconds - timestarted < 40000L) && system_state != IDLE);	// Move forward until LIMIT triggered
      6ae:	0f 90       	pop	r0
      6b0:	0f 90       	pop	r0
      6b2:	20 91 04 03 	lds	r18, 0x0304
@@ -950,8 +962,8 @@ void calibrate(){
      6de:	0f 2f       	mov	r16, r31
      6e0:	1e 2f       	mov	r17, r30
      6e2:	0e 94 eb 08 	call	0x11d6	; 0x11d6 <__subdi3>
-     6e6:	2f 35       	cpi	r18, 0x5F	; 95
-     6e8:	3a 4e       	sbci	r19, 0xEA	; 234
+     6e6:	2f 33       	cpi	r18, 0x3F	; 63
+     6e8:	3c 49       	sbci	r19, 0x9C	; 156
      6ea:	41 05       	cpc	r20, r1
      6ec:	51 05       	cpc	r21, r1
      6ee:	61 05       	cpc	r22, r1
@@ -963,7 +975,7 @@ void calibrate(){
      6fa:	80 91 fd 02 	lds	r24, 0x02FD
      6fe:	81 11       	cpse	r24, r1
      700:	d8 cf       	rjmp	.-80     	; 0x6b2 <calibrate+0xda>
-	if(milliseconds - timestarted >= 20000L){			// something goes wrong
+	if(milliseconds - timestarted >= 40000L){			// something must has gone wrong after 40s
      702:	20 91 04 03 	lds	r18, 0x0304
      706:	30 91 05 03 	lds	r19, 0x0305
      70a:	40 91 06 03 	lds	r20, 0x0306
@@ -981,8 +993,8 @@ void calibrate(){
      72e:	0f 2f       	mov	r16, r31
      730:	1e 2f       	mov	r17, r30
      732:	0e 94 eb 08 	call	0x11d6	; 0x11d6 <__subdi3>
-     736:	2f 31       	cpi	r18, 0x1F	; 31
-     738:	3e 44       	sbci	r19, 0x4E	; 78
+     736:	2f 33       	cpi	r18, 0x3F	; 63
+     738:	3c 49       	sbci	r19, 0x9C	; 156
      73a:	41 05       	cpc	r20, r1
      73c:	51 05       	cpc	r21, r1
      73e:	61 05       	cpc	r22, r1
@@ -991,7 +1003,7 @@ void calibrate(){
      744:	91 05       	cpc	r25, r1
      746:	09 f1       	breq	.+66     	; 0x78a <calibrate+0x1b2>
      748:	00 f1       	brcs	.+64     	; 0x78a <calibrate+0x1b2>
-		TCCR1B &= 0xF8;				// Force stop output
+		TCCR1B &= 0xF8;		// Force stop output
      74a:	e1 e8       	ldi	r30, 0x81	; 129
      74c:	f0 e0       	ldi	r31, 0x00	; 0
      74e:	80 81       	ld	r24, Z
@@ -1025,7 +1037,7 @@ void calibrate(){
 		panic();
      786:	0e 94 d4 02 	call	0x5a8	; 0x5a8 <panic>
 	}
-	clear_position = 1;
+	clear_position = 1;	// Clear position counter on next tick (at most after 1ms).
      78a:	81 e0       	ldi	r24, 0x01	; 1
      78c:	80 93 f3 02 	sts	0x02F3, r24
 	TCNT0 = 0;		// clear timer counter for steps
@@ -1051,7 +1063,7 @@ void calibrate(){
      7ba:	9f 93       	push	r25
      7bc:	8f 93       	push	r24
      7be:	0e 94 74 00 	call	0xe8	; 0xe8 <uprintf>
-	self_check = 0;
+	self_check = 0;	// Finish calibration
      7c2:	10 92 f2 02 	sts	0x02F2, r1
      7c6:	0f 90       	pop	r0
      7c8:	0f 90       	pop	r0
@@ -1078,7 +1090,7 @@ void calibrate(){
 	}
 }
 
-/*Called when BUTTON is pressed. NOTE: THIS IS IN AN INTERRUPT ENVIRONMENT. ALL TIMING AND DELAYS WILL *NOT* WORK. */
+/*Called to update the system state machine when BUTTON is pressed. NOTE: THIS IS IN AN INTERRUPT ENVIRONMENT. ALL TIMING AND DELAYS WILL *NOT* WORK. */
 void buttonPressedCallBack(){
 	if(ISDEBUG)
      7ec:	4f 99       	sbic	0x09, 7	; 9
@@ -1095,7 +1107,7 @@ void buttonPressedCallBack(){
      800:	80 91 f2 02 	lds	r24, 0x02F2
      804:	81 11       	cpse	r24, r1
      806:	cb c0       	rjmp	.+406    	; 0x99e <__stack+0x9f>
-		return;		// Button do not have effect when self-checking
+		return;		// BUTTON do not have any effect when self-checking
 	switch(system_state){
      808:	80 91 fd 02 	lds	r24, 0x02FD
      80c:	88 23       	and	r24, r24
@@ -1105,10 +1117,10 @@ void buttonPressedCallBack(){
      814:	c4 c0       	rjmp	.+392    	; 0x99e <__stack+0x9f>
      816:	b7 c0       	rjmp	.+366    	; 0x986 <__stack+0x87>
 		case IDLE:
-			if(READ(AUTO) == 0){
+			if(READ(AUTO) == 0){ // AUTO modes
      818:	33 99       	sbic	0x06, 3	; 6
      81a:	97 c0       	rjmp	.+302    	; 0x94a <__stack+0x4b>
-				if(READ(DIRIN) == FORWARD){
+				if(READ(DIRIN) == FORWARD){ //AUTO_FOWARD
      81c:	4e 9b       	sbis	0x09, 6	; 9
      81e:	4a c0       	rjmp	.+148    	; 0x8b4 <buttonPressedCallBack+0xc8>
 					if(READ(LIMIT) == 1 && position >= 0){//Ensure it's valid to move
@@ -1175,7 +1187,7 @@ void buttonPressedCallBack(){
 						}
 					}
 				}
-				else{
+				else{ //AUTO_BACKWARD
 					if(position <= CRITICAL_POS){//Ensure it's valid to move
      8b4:	80 91 0c 03 	lds	r24, 0x030C
      8b8:	90 91 0d 03 	lds	r25, 0x030D
@@ -1242,8 +1254,8 @@ void buttonPressedCallBack(){
 					}
 				}
 			}
-			else{
-				if(READ(DIRIN) == FORWARD){
+			else{// MANUAL modes
+				if(READ(DIRIN) == FORWARD){ // MANUAL_FORWARD ignore any restrictions on position and LIMIT. Just MOVE!
      94a:	4e 9b       	sbis	0x09, 6	; 9
      94c:	0e c0       	rjmp	.+28     	; 0x96a <__stack+0x6b>
 					system_state = MANUAL_FORWARD;
@@ -1262,7 +1274,7 @@ void buttonPressedCallBack(){
      966:	0f 90       	pop	r0
      968:	08 95       	ret
 				}
-				else{
+				else{ // MANUAL_BACKWARD
 					system_state = MANUAL_BACKWARD;
      96a:	84 e0       	ldi	r24, 0x04	; 4
      96c:	80 93 fd 02 	sts	0x02FD, r24
@@ -1283,7 +1295,7 @@ void buttonPressedCallBack(){
 			break;
 		case AUTO_FORWARD:
 		case AUTO_BACKWARD:
-			system_state = IDLE;			// Press when autorunning == stop
+			system_state = IDLE;			// Press the second time in AUTO modes -> stop
      986:	10 92 fd 02 	sts	0x02FD, r1
 			if(ISDEBUG)
      98a:	4f 99       	sbic	0x09, 7	; 9
@@ -1327,7 +1339,7 @@ void buttonReleasedCallBack(){
      9c4:	60 f4       	brcc	.+24     	; 0x9de <buttonReleasedCallBack+0x3e>
 		case MANUAL_BACKWARD:
 		case MANUAL_FORWARD:
-			system_state = IDLE;			// Release == stop
+			system_state = IDLE;			// Release in manual mode -> stop
      9c6:	10 92 fd 02 	sts	0x02FD, r1
 			if(ISDEBUG)
      9ca:	4f 99       	sbic	0x09, 7	; 9
@@ -1343,11 +1355,11 @@ void buttonReleasedCallBack(){
      9de:	08 95       	ret
 
 000009e0 <timer2CallBack>:
-	self_check = 0;
+	self_check = 0;	// Finish calibration
 }
 
 /*Main loop. NOTE: THIS IS IN AN INTERRUPT ENVIRONMENT. ALL TIMING AND DELAYS WILL *NOT* WORK.*/
-/*This main loop is driven by Timer 0 1kHz ticks. Since most events are triggered by BUTTON and LIMIT, here we only try to blink the LEDs*/
+/*This main loop is driven by Timer 2 1kHz ticks.*/
 void timer2CallBack(){
      9e0:	af 92       	push	r10
      9e2:	bf 92       	push	r11
@@ -1361,6 +1373,7 @@ void timer2CallBack(){
 	//	uprintf("Time: %ld\r\n",milliseconds);
 	//}
 	/*Update LED status*/
+	/*Current state machine: Blink green when AUTO_FORWARD, Blink red when AUTO_BACKWARD, Green-on when MANUAL_FORWARD, Red-on when MANUAL_BACKWARD, OFF otherwise*/
 	switch(led_state){
      9f0:	80 91 fe 02 	lds	r24, 0x02FE
      9f4:	81 30       	cpi	r24, 0x01	; 1
@@ -1514,7 +1527,7 @@ void timer2CallBack(){
      b7e:	41 9a       	sbi	0x08, 1	; 8
      b80:	42 98       	cbi	0x08, 2	; 8
      b82:	bf c0       	rjmp	.+382    	; 0xd02 <timer2CallBack+0x322>
-					}
+				default:
 					break;
 			}
 			break;
@@ -1662,7 +1675,7 @@ void timer2CallBack(){
 			}
 			break;
 	}
-	/*Update BUTTON status*/
+	/*Update BUTTON state machine if ANTIJITTER ms have passed*/
 	switch(button_state){
      d02:	80 91 ff 02 	lds	r24, 0x02FF
      d06:	81 30       	cpi	r24, 0x01	; 1
@@ -1746,8 +1759,8 @@ void timer2CallBack(){
 					button_state = PRESSED;
      dd0:	83 e0       	ldi	r24, 0x03	; 3
      dd2:	80 93 ff 02 	sts	0x02FF, r24
-				}
-			}
+			break;
+		default:
 			break;
 	}
 	/*Update microstep status*/
@@ -1760,7 +1773,7 @@ void timer2CallBack(){
      de0:	89 27       	eor	r24, r25
      de2:	80 93 25 07 	sts	0x0725, r24
 	/*Update Pulse output*/
-	if(system_state != oldstate || abs(speed - oldspeed) > SPEED_EPS || isfast != oldisfast){// only take action when updated
+	if(system_state != oldstate || abs(speed - oldspeed) > SPEED_EPS || isfast != oldisfast){// only take action when something changed
      de6:	90 91 fd 02 	lds	r25, 0x02FD
      dea:	80 91 fc 02 	lds	r24, 0x02FC
      dee:	98 13       	cpse	r25, r24
@@ -1843,7 +1856,7 @@ void timer2CallBack(){
      e88:	90 91 1a 07 	lds	r25, 0x071A
      e8c:	90 93 1a 07 	sts	0x071A, r25
      e90:	80 93 19 07 	sts	0x0719, r24
-				/*Common for FORWARD and BACKWARD*/
+				/*Common for all*/
 	l1:			
 				if(isfast){
      e94:	80 91 25 07 	lds	r24, 0x0725
@@ -1934,7 +1947,7 @@ void timer2CallBack(){
      f54:	f0 92 0f 03 	sts	0x030F, r15
 				TCNT0 = 0;
      f58:	16 bc       	out	0x26, r1	; 38
-				if(clear_position){
+				if(clear_position){ // Clear position if the flag is set
      f5a:	80 91 f3 02 	lds	r24, 0x02F3
      f5e:	88 23       	and	r24, r24
      f60:	91 f0       	breq	.+36     	; 0xf86 <timer2CallBack+0x5a6>
@@ -2015,12 +2028,12 @@ void timer2CallBack(){
     1006:	08 95       	ret
 
 00001008 <__vector_7>:
-	va_end(args);
 	_write_serial(buffer2);
 }
 
-/*Interrupt Service Routines*/
-ISR(TIMER2_COMPA_vect, ISR_BLOCK){	// ISR for Timer 2 tick. Global 1ms timing
+/*Interrupt Service Routines (ISRs)*/
+/* ISR for Timer 2 ticking. Triggers every 1ms, therefore used as global 1ms timing */
+ISR(TIMER2_COMPA_vect, ISR_BLOCK){	
     1008:	1f 92       	push	r1
     100a:	0f 92       	push	r0
     100c:	0f b6       	in	r0, 0x3f	; 63
@@ -2038,7 +2051,7 @@ ISR(TIMER2_COMPA_vect, ISR_BLOCK){	// ISR for Timer 2 tick. Global 1ms timing
     1024:	bf 93       	push	r27
     1026:	ef 93       	push	r30
     1028:	ff 93       	push	r31
-	milliseconds ++;
+	milliseconds++;
     102a:	20 91 04 03 	lds	r18, 0x0304
     102e:	30 91 05 03 	lds	r19, 0x0305
     1032:	40 91 06 03 	lds	r20, 0x0306
@@ -2057,7 +2070,7 @@ ISR(TIMER2_COMPA_vect, ISR_BLOCK){	// ISR for Timer 2 tick. Global 1ms timing
     1064:	70 93 09 03 	sts	0x0309, r23
     1068:	80 93 0a 03 	sts	0x030A, r24
     106c:	90 93 0b 03 	sts	0x030B, r25
-	timer2CallBack();
+	timer2CallBack();	/*Do perioidic work that needs to be done every 1ms*/
     1070:	0e 94 f0 04 	call	0x9e0	; 0x9e0 <timer2CallBack>
 }
     1074:	ff 91       	pop	r31
@@ -2124,7 +2137,7 @@ void limitTriggeredCallBack(){
     10ee:	83 30       	cpi	r24, 0x03	; 3
     10f0:	79 f4       	brne	.+30     	; 0x1110 <limitTriggeredCallBack+0x7a>
 		case AUTO_FORWARD:
-		case MANUAL_FORWARD:
+		case MANUAL_FORWARD:	// Force stop if moving forward
 			system_state = IDLE;
     10f2:	10 92 fd 02 	sts	0x02FD, r1
 			clear_position = 1;	// clear position at next update
@@ -2144,12 +2157,12 @@ void limitTriggeredCallBack(){
     1110:	08 95       	ret
 
 00001112 <__vector_1>:
-		speed = 1023 - (ADCL | ((unsigned int)ADCH << 8));
 		speed_update_timer = milliseconds;
 	}
 }
 
-ISR(INT0_vect,ISR_BLOCK){// ISR for LIMIT switch
+/* ISR for LIMIT switch */
+ISR(INT0_vect,ISR_BLOCK){
     1112:	1f 92       	push	r1
     1114:	0f 92       	push	r0
     1116:	0f b6       	in	r0, 0x3f	; 63
@@ -2167,7 +2180,7 @@ ISR(INT0_vect,ISR_BLOCK){// ISR for LIMIT switch
     112e:	bf 93       	push	r27
     1130:	ef 93       	push	r30
     1132:	ff 93       	push	r31
-	limitTriggeredCallBack();
+	limitTriggeredCallBack();	/*Go to the callback for details*/
     1134:	0e 94 4b 08 	call	0x1096	; 0x1096 <limitTriggeredCallBack>
 }
     1138:	ff 91       	pop	r31
@@ -2204,7 +2217,7 @@ int main()
     1166:	80 81       	ld	r24, Z
     1168:	80 64       	ori	r24, 0x40	; 64
     116a:	80 83       	st	Z, r24
-	wdt_enable(WDTO_250MS);	// Enable watch dog timer
+	wdt_enable(WDTO_250MS);	// Enable watch dog timer. The dog gets hungry every 250 ms. If he's not fed, he'll bite and reset the system.
     116c:	2c e0       	ldi	r18, 0x0C	; 12
     116e:	88 e1       	ldi	r24, 0x18	; 24
     1170:	90 e0       	ldi	r25, 0x00	; 0
@@ -2214,7 +2227,7 @@ int main()
     1178:	80 93 60 00 	sts	0x0060, r24
     117c:	0f be       	out	0x3f, r0	; 63
     117e:	20 93 60 00 	sts	0x0060, r18
-	while (1){
+	while(1){
 		wdt_reset();	// feed the hungry dog
     1182:	a8 95       	wdr
     1184:	8f e1       	ldi	r24, 0x1F	; 31

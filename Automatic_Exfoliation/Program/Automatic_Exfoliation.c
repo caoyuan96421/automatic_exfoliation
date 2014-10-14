@@ -9,6 +9,7 @@
 #include <stdio.h>
 #include <avr/eeprom.h>
 #include <avr/wdt.h>
+#include <stdlib.h>
 
 /*Constants*/
 /*If you want to change any parameters, please do it here*/
@@ -86,7 +87,7 @@
 #define MODE_IN(name) DDR_##name &= ~(1<< (NUM_##name))			/*Set a pin to input mode*/
 
 #define LED_OFF CLR(LEDP);CLR(LEDN)								/*Turn off the double-color LED*/
-#define LED_ON(state)					\						
+#define LED_ON(state)					\
 {										\
 	if(state==GREEN){					\
 		SET(LEDP);CLR(LEDN);			\
@@ -182,7 +183,7 @@ void _write_serial(unsigned char *s){
 void uprintf(char *s, ...){
 	va_list args;
 	va_start(args,s);
-	vsprintf(buffer2,s,args);
+	vsprintf((char*)buffer2,s,args);
 	va_end(args);
 	_write_serial(buffer2);
 }
@@ -200,7 +201,7 @@ ISR(TIMER2_COMPA_vect, ISR_BLOCK){
 ISR(TIMER0_OVF_vect,ISR_BLOCK){ 
 	/*Each overflow means 256 steps*/
 	position += 256L * step;
-	if(position < 0 && system_state == AUTO_FORWARD || position > CRITICAL_POS && system_state == AUTO_BACKWARD){
+	if((position < 0 && system_state == AUTO_FORWARD) || (position > CRITICAL_POS && system_state == AUTO_BACKWARD)){
 		/* If position<0 or position>CRITICAL_POS, it means we should have reached the limit*/
 		/* For safety, exit AUTO modes immediately */
 		system_state = IDLE;
@@ -409,6 +410,8 @@ void timer2CallBack(){
 						LED_ON(GREEN);
 					}
 					break;
+				default:
+					break;
 			}
 			break;
 		case GREEN:
@@ -461,6 +464,8 @@ void timer2CallBack(){
 					button_state = PRESSED;
 				}
 			}
+			break;
+		default:
 			break;
 	}
 	/*Update microstep status*/
@@ -573,6 +578,8 @@ void buttonPressedCallBack(){
 			if(ISDEBUG)
 				uprintf("IDLE\r\n");
 			break;
+		default:
+			break;
 	}
 }
 
@@ -588,6 +595,8 @@ void buttonReleasedCallBack(){
 			system_state = IDLE;			// Release in manual mode -> stop
 			if(ISDEBUG)
 				uprintf("IDLE\r\n");
+			break;
+		default:
 			break;
 	}
 }

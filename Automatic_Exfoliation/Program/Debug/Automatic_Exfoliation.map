@@ -664,17 +664,17 @@ END GROUP
 .debug_pubnames
  *(.debug_pubnames)
 
-.debug_info     0x00000000      0x8d3
+.debug_info     0x00000000      0x8bc
  *(.debug_info .gnu.linkonce.wi.*)
- .debug_info    0x00000000      0x8d3 Automatic_Exfoliation.o
+ .debug_info    0x00000000      0x8bc Automatic_Exfoliation.o
 
-.debug_abbrev   0x00000000      0x2e1
+.debug_abbrev   0x00000000      0x2b8
  *(.debug_abbrev)
- .debug_abbrev  0x00000000      0x2e1 Automatic_Exfoliation.o
+ .debug_abbrev  0x00000000      0x2b8 Automatic_Exfoliation.o
 
-.debug_line     0x00000000      0x45f
+.debug_line     0x00000000      0x451
  *(.debug_line .debug_line.* .debug_line_end)
- .debug_line    0x00000000      0x45f Automatic_Exfoliation.o
+ .debug_line    0x00000000      0x451 Automatic_Exfoliation.o
 
 .debug_frame    0x00000000      0x484
  *(.debug_frame)
