@@ -1891,7 +1891,7 @@ void timer2CallBack(){
 					OCR1A = (long)(SPEED_MAX_SLOW - SPEED_MIN_SLOW) * speed / 1024 + SPEED_MIN_SLOW;
      ed4:	20 91 00 03 	lds	r18, 0x0300
      ed8:	30 91 01 03 	lds	r19, 0x0301
-     edc:	a0 ee       	ldi	r26, 0xE0	; 224
+     edc:	a4 ee       	ldi	r26, 0xE4	; 228
      ede:	b3 e0       	ldi	r27, 0x03	; 3
      ee0:	0e 94 c9 08 	call	0x1192	; 0x1192 <__umulhisi3>
      ee4:	46 2f       	mov	r20, r22
@@ -1907,7 +1907,7 @@ void timer2CallBack(){
      ef8:	3a 95       	dec	r19
      efa:	d1 f7       	brne	.-12     	; 0xef0 <timer2CallBack+0x510>
      efc:	30 2d       	mov	r19, r0
-     efe:	48 5f       	subi	r20, 0xF8	; 248
+     efe:	4c 5f       	subi	r20, 0xFC	; 252
      f00:	5f 4f       	sbci	r21, 0xFF	; 255
      f02:	50 93 89 00 	sts	0x0089, r21
      f06:	40 93 88 00 	sts	0x0088, r20

@@ -27,7 +27,7 @@
 #define CRITICAL_POS	6300000L		/*Step count for reacheable range. For safety, this should be smaller than SYSTEM_LENGTH*/
 #define SPEED_MIN_FAST		400			/*Minimum pulse period for FAST mode. This corresponds to fastest movement*/
 #define SPEED_MAX_FAST		3500		/*Maximum pulse period for FAST mode. This corresponds to slowest movement*/
-#define SPEED_MIN_SLOW		8			/*The same thing for slow movement*/
+#define SPEED_MIN_SLOW		4			/*The same thing for slow movement*/
 #define SPEED_MAX_SLOW		1000
 
 /*Pinout definitions*/
